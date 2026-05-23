@@ -1,4 +1,12 @@
-export type ExchangeId = "hyperliquid" | "lighter" | "aster" | (string & {});
+export type ExchangeId =
+  | "hyperliquid"
+  | "lighter"
+  | "aster"
+  | "pacifica"
+  | "grvt"
+  | "nado"
+  | "hibachi"
+  | (string & {});
 
 export type MarketSymbol = string;
 
