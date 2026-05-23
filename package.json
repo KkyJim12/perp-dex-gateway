@@ -1,0 +1,32 @@
+{
+  "name": "perp-dex-gateway",
+  "version": "1.0.0",
+  "description": "TypeScript gateway library for connecting to multiple perpetual DEX venues.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "tsc -b tsconfig.json --clean",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run typecheck"
+  },
+  "keywords": [
+    "perp",
+    "perpetuals",
+    "dex",
+    "hyperliquid",
+    "lighter",
+    "aster",
+    "trading"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.3"
+  }
+}
