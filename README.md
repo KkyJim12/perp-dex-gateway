@@ -1,117 +1,176 @@
 # perp-dex-gateway
 
-TypeScript gateway library for projects that need one interface for multiple perpetual DEX venues.
+TypeScript gateway library for projects that need one interface for many perpetual DEX venues.
 
-Initial adapters:
+The goal is simple: your app sends one normalized request, chooses which perp DEXs should receive it, and gets one normalized result list back.
 
-- Hyperliquid
-- Lighter
-- Aster
-- Pacifica
-- GRVT
-- Nado
-- Hibachi
-- Phoenix
-- edgeX
-- Extended
-- Ethereal
-- Decibel
-- RISEx
-- 01 Exchange
-- StandX
-- Hotstuff
+## Supported Exchanges
 
-The package exposes a common adapter contract for markets, tickers, balances, positions, order placement, and cancellation. Hyperliquid includes public market/ticker methods as a working example. Authenticated and venue-specific trading methods are intentionally exposed through the adapter interface so each exchange can add signing and request normalization cleanly.
+| Exchange | ID | Public markets | Public ticker | Trading methods |
+| --- | --- | --- | --- | --- |
+| Hyperliquid | `hyperliquid` | Yes | Yes | Planned |
+| Lighter | `lighter` | Planned | Planned | Planned |
+| Aster | `aster` | Planned | Planned | Planned |
+| Pacifica | `pacifica` | Yes | Yes | Planned |
+| GRVT | `grvt` | Yes | Yes | Planned |
+| Nado | `nado` | Planned | Planned | Planned |
+| Hibachi | `hibachi` | Planned | Planned | Planned |
+| Phoenix | `phoenix` | Yes | Planned | Planned |
+| edgeX | `edgex` | Planned | Planned | Planned |
+| Extended | `extended` | Yes | Yes | Planned |
+| Ethereal | `ethereal` | Yes | Yes | Planned |
+| Decibel | `decibel` | Yes, API key needed for live test | Yes, API key needed for live test | Planned |
+| RISEx | `risex` | Planned | Planned | Planned |
+| 01 Exchange | `01` | Planned | Planned | Planned |
+| StandX | `standx` | Yes | Yes | Planned |
+| Hotstuff | `hotstuff` | Yes | Yes | Planned |
+
+Methods marked `Planned` currently throw `UnsupportedOperationError`. The adapter still exists, so projects can configure, route, and add implementations incrementally without changing the gateway shape.
 
 ## Install
 
+From npm after publishing:
+
 ```bash
-npm install
+npm install perp-dex-gateway
 ```
 
-## Build
+From this repo while developing locally:
 
 ```bash
+npm install
 npm run build
 ```
 
-## Usage
+## Quick Start
 
 ```ts
 import { createGateway } from "perp-dex-gateway";
 
-const gateway = createGateway({
-  hyperliquid: {},
-  pacifica: {},
-  grvt: {},
-  phoenix: {},
-  extended: {},
-  ethereal: {},
-  decibel: {},
-  "01": {},
-  standx: {},
-  hotstuff: {},
-  lighter: {
-    credentials: {
-      apiKey: process.env.LIGHTER_API_KEY,
-      apiSecret: process.env.LIGHTER_API_SECRET,
-    },
-  },
-  aster: false,
+const gateway = createGateway();
+
+const tickers = await gateway.getTickers({
+  symbol: "BTC",
+  exchanges: ["hyperliquid", "pacifica", "grvt", "extended", "standx"],
 });
 
-const results = await gateway.getMarkets({
-  exchanges: ["hyperliquid", "lighter"],
-});
-
-for (const result of results) {
+for (const result of tickers) {
   if (result.ok) {
-    console.log(result.exchangeId, result.data.length);
+    console.log(result.exchangeId, result.data.markPrice);
   } else {
     console.warn(result.exchangeId, result.error);
   }
 }
 ```
 
-You can still call one exchange directly:
+## Configure Exchanges
+
+`createGateway()` registers every built-in adapter by default. Pass `false` to disable an exchange, or pass config to override endpoints, headers, credentials, or timeout.
 
 ```ts
-const hyperliquid = gateway.get("hyperliquid");
-const btc = await hyperliquid.getTicker("BTC");
-
-console.log(btc.markPrice);
+const gateway = createGateway({
+  hyperliquid: {},
+  pacifica: {},
+  grvt: {},
+  extended: {},
+  standx: {},
+  hotstuff: {},
+  aster: false,
+  lighter: {
+    credentials: {
+      apiKey: process.env.LIGHTER_API_KEY,
+      apiSecret: process.env.LIGHTER_API_SECRET,
+    },
+    timeoutMs: 15_000,
+  },
+  decibel: {
+    headers: {
+      authorization: `Bearer ${process.env.DECIBEL_API_KEY}`,
+    },
+  },
+  "01": {},
+});
 ```
 
-## Fan-out Actions
-
-Call one function to run the same action across every registered perpetual DEX:
+01 Exchange can also be configured with the TypeScript-friendly alias:
 
 ```ts
-const tickers = await gateway.getTickers({
-  symbol: "BTC",
-  exchanges: ["hyperliquid", "lighter", "pacifica", "extended", "standx"],
+const gateway = createGateway({
+  zeroOne: {},
+});
+```
+
+## Select Perps Per Request
+
+Every gateway fan-out method accepts `exchanges`. Only those adapters receive the action.
+
+```ts
+const markets = await gateway.getMarkets({
+  exchanges: ["hyperliquid", "pacifica"],
 });
 
 const balances = await gateway.getBalances({
-  exchanges: ["hyperliquid", "aster", "grvt", "decibel"],
+  exchanges: ["lighter", "aster"],
 });
 
 const positions = await gateway.getPositions({
-  exchanges: ["lighter"],
+  exchanges: ["hyperliquid"],
 });
 ```
 
 Omit `exchanges` to run against every registered adapter:
 
 ```ts
-const btc = await gateway.getTickers({ symbol: "BTC" });
+const allMarkets = await gateway.getMarkets();
 ```
 
-Order actions use the same pattern:
+## Result Shape
+
+Fan-out methods do not throw just because one exchange fails. Each exchange returns an `ok` result or an error result:
 
 ```ts
+type GatewayActionResult<T> =
+  | {
+      exchangeId: string;
+      exchangeName: string;
+      ok: true;
+      data: T;
+    }
+  | {
+      exchangeId: string;
+      exchangeName: string;
+      ok: false;
+      error: unknown;
+    };
+```
+
+This lets your app use partial successes safely:
+
+```ts
+const results = await gateway.getMarkets({
+  exchanges: ["hyperliquid", "lighter", "standx"],
+});
+
+const successful = results.filter((result) => result.ok);
+const failed = results.filter((result) => !result.ok);
+```
+
+## Available Gateway Methods
+
+```ts
+await gateway.getMarkets({ exchanges });
+
+await gateway.getTickers({
+  symbol: "BTC",
+  exchanges,
+});
+
+await gateway.getBalances({ exchanges });
+
+await gateway.getPositions({ exchanges });
+
 await gateway.placeOrders({
-  exchanges: ["hyperliquid", "aster", "pacifica", "phoenix"],
+  exchanges,
   order: {
     symbol: "BTC",
     side: "buy",
@@ -120,17 +179,50 @@ await gateway.placeOrders({
     price: "65000",
   },
 });
-```
 
-For custom actions, use `callAll`:
-
-```ts
-const results = await gateway.callAll((exchange) => exchange.getMarkets(), {
-  exchanges: ["hyperliquid", "lighter"],
+await gateway.cancelOrders({
+  exchanges,
+  order: {
+    symbol: "BTC",
+    orderId: "order-id",
+  },
 });
 ```
 
+## Direct Exchange Calls
+
+You can still use a single adapter directly when needed:
+
+```ts
+const hyperliquid = gateway.get("hyperliquid");
+
+const markets = await hyperliquid.getMarkets();
+const btc = await hyperliquid.getTicker("BTC");
+```
+
+## Custom Fan-out Actions
+
+Use `callAll` when your app needs a custom action while keeping the same result format:
+
+```ts
+const results = await gateway.callAll(
+  (exchange) => exchange.getMarkets(),
+  { exchanges: ["hyperliquid", "pacifica"] },
+);
+```
+
+The second argument also accepts the old shorthand array:
+
+```ts
+const results = await gateway.callAll(
+  (exchange) => exchange.getMarkets(),
+  ["hyperliquid", "pacifica"],
+);
+```
+
 ## Custom Adapter
+
+Add a private or unsupported perp DEX by extending `BasePerpDexAdapter`:
 
 ```ts
 import {
@@ -153,17 +245,45 @@ class MyPerpAdapter extends BasePerpDexAdapter {
 const gateway = new PerpDexGateway([
   new MyPerpAdapter({
     id: "my-perp",
+    name: "My Perp",
     baseUrl: "https://api.example.com",
   }),
 ]);
 ```
 
+## Testing
+
+Run deterministic unit tests with mocked HTTP responses:
+
+```bash
+npm test
+```
+
+Run real public endpoint tests:
+
+```bash
+npm run test:integration
+```
+
+Live tests call real DEX servers. They can fail because of network restrictions, endpoint changes, rate limits, region blocks, or missing API keys. Decibel live tests are skipped unless `DECIBEL_API_KEY` is set.
+
+## Development
+
+```bash
+npm run typecheck
+npm run build
+npm test
+```
+
+PowerShell may block the `npm` shim on some machines. Use `npm.cmd` if that happens:
+
+```bash
+npm.cmd test
+```
+
 ## Roadmap
 
-- Add exchange-specific signing for Hyperliquid, Lighter, and Aster.
-- Add exchange-specific signing for Pacifica, GRVT, Nado, and Hibachi.
-- Add exchange-specific signing for Phoenix, edgeX, Extended, Ethereal, Decibel, RISEx, and 01 Exchange.
-- Add exchange-specific signing for StandX and Hotstuff.
-- Normalize open orders, fills, funding history, and leverage/margin settings.
+- Add exchange-specific signing for authenticated trading.
+- Normalize open orders, fills, funding history, leverage, and margin settings.
 - Add websocket market data and account streams.
-- Add integration tests with mocked exchange responses.
+- Add more live endpoint coverage as each adapter gets normalized public methods.
