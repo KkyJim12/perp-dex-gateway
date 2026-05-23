@@ -39,7 +39,7 @@ export class EtherealAdapter extends BasePerpDexAdapter {
 
   async getMarkets(): Promise<Market[]> {
     const response = await this.http.get<EtherealResponse<EtherealProduct[]>>("/v1/product", {
-      query: { limit: 500, orderBy: "createdAt" },
+      query: { limit: 200, orderBy: "createdAt" },
     });
 
     return response.data.map((product) => ({
