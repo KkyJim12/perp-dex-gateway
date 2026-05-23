@@ -6,6 +6,15 @@ export type ExchangeId =
   | "grvt"
   | "nado"
   | "hibachi"
+  | "phoenix"
+  | "edgex"
+  | "extended"
+  | "ethereal"
+  | "decibel"
+  | "risex"
+  | "01"
+  | "standx"
+  | "hotstuff"
   | (string & {});
 
 export type MarketSymbol = string;

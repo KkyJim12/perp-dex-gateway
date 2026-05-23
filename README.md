@@ -11,6 +11,15 @@ Initial adapters:
 - GRVT
 - Nado
 - Hibachi
+- Phoenix
+- edgeX
+- Extended
+- Ethereal
+- Decibel
+- RISEx
+- 01 Exchange
+- StandX
+- Hotstuff
 
 The package exposes a common adapter contract for markets, tickers, balances, positions, order placement, and cancellation. Hyperliquid includes public market/ticker methods as a working example. Authenticated and venue-specific trading methods are intentionally exposed through the adapter interface so each exchange can add signing and request normalization cleanly.
 
@@ -35,6 +44,13 @@ const gateway = createGateway({
   hyperliquid: {},
   pacifica: {},
   grvt: {},
+  phoenix: {},
+  extended: {},
+  ethereal: {},
+  decibel: {},
+  "01": {},
+  standx: {},
+  hotstuff: {},
   lighter: {
     credentials: {
       apiKey: process.env.LIGHTER_API_KEY,
@@ -73,11 +89,11 @@ Call one function to run the same action across every registered perpetual DEX:
 ```ts
 const tickers = await gateway.getTickers({
   symbol: "BTC",
-  exchanges: ["hyperliquid", "lighter", "pacifica"],
+  exchanges: ["hyperliquid", "lighter", "pacifica", "extended", "standx"],
 });
 
 const balances = await gateway.getBalances({
-  exchanges: ["hyperliquid", "aster", "grvt"],
+  exchanges: ["hyperliquid", "aster", "grvt", "decibel"],
 });
 
 const positions = await gateway.getPositions({
@@ -95,7 +111,7 @@ Order actions use the same pattern:
 
 ```ts
 await gateway.placeOrders({
-  exchanges: ["hyperliquid", "aster", "pacifica"],
+  exchanges: ["hyperliquid", "aster", "pacifica", "phoenix"],
   order: {
     symbol: "BTC",
     side: "buy",
@@ -146,6 +162,8 @@ const gateway = new PerpDexGateway([
 
 - Add exchange-specific signing for Hyperliquid, Lighter, and Aster.
 - Add exchange-specific signing for Pacifica, GRVT, Nado, and Hibachi.
+- Add exchange-specific signing for Phoenix, edgeX, Extended, Ethereal, Decibel, RISEx, and 01 Exchange.
+- Add exchange-specific signing for StandX and Hotstuff.
 - Normalize open orders, fills, funding history, and leverage/margin settings.
 - Add websocket market data and account streams.
 - Add integration tests with mocked exchange responses.
